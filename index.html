@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NSPH #02 - 内测专用</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            display: flex;
+            min-height: 100vh;
+            background-color: #ffffff;
+            color: #333333;
+            line-height: 1.6;
+        }
+        
+        /* 可收起的侧边栏样式 */
+        .sidebar {
+            width: 320px;
+            background-color: #5580ff;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            transition: width 0.3s ease;
+            z-index: 10;
+        }
+        
+        .sidebar.collapsed {
+            width: 60px;
+        }
+        
+        .sidebar.collapsed .sidebar-header h1,
+        .sidebar.collapsed .category-title .title-text,
+        .sidebar.collapsed .puzzle-item .puzzle-title-text,
+        .sidebar.collapsed .sidebar-footer p,
+        .sidebar.collapsed .sidebar-controls button span {
+            display: none;
+        }
+        
+        .sidebar.collapsed .sidebar-header,
+        .sidebar.collapsed .category-title,
+        .sidebar.collapsed .puzzle-item,
+        .sidebar.collapsed .sidebar-footer {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+        
+        .sidebar.collapsed .toggle-btn i {
+            transform: rotate(180deg);
+        }
+        
+        .sidebar-header {
+            padding: 25px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .sidebar-header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0;
+            color: white;
+        }
+        
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        .toggle-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .puzzle-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 0;
+        }
+        
+        .puzzle-category {
+            margin-bottom: 10px;
+        }
+        
+        .category-title {
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-weight: 800;
+            font-size: 1.2rem;
+            transition: background-color 0.3s;
+        }
+        
+        .category-title:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .category-title .letter {
+            margin-right: 10px;
+            text-align: center;
+            font-weight: 800;
+            font-size: 1.3rem;
+        }
+        
+        .sidebar.collapsed .category-title .letter {
+            margin-right: 0;
+        }
+        
+        .puzzle-list {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .puzzle-list.show {
+            max-height: 500px;
+        }
+        
+        .puzzle-item {
+            padding: 10px 20px 10px 45px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+        }
+        
+        .puzzle-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-left-color: white;
+        }
+        
+        .puzzle-item.active {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-left-color: white;
+            font-weight: 600;
+        }
+        
+        .puzzle-number {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-right: 8px;
+        }
+        
+        .puzzle-title-text {
+            font-size: 0.85rem;
+        }
+        
+        .sidebar.collapsed .puzzle-item {
+            padding: 10px 0;
+            justify-content: center;
+        }
+        
+        .sidebar-controls {
+            display: flex;
+            padding: 15px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 10px;
+        }
+        
+        .sidebar-controls button {
+            flex: 1;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background-color 0.3s;
+        }
+        
+        .sidebar-controls button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .sidebar-footer {
+            padding: 15px 20px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+        
+        /* 主内容区域样式 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .content-header {
+            padding: 20px 30px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border-bottom: 1px solid #eaeaea;
+        }
+        
+        .current-region-title {
+            font-size: 1.5rem;
+            color: #5580ff;
+            font-weight: 700;
+        }
+        
+        .content-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+        }
+        
+        .puzzle-content {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            padding: 30px;
+            max-width: 900px;
+            margin: 0 auto;
+            display: none;
+        }
+        
+        .puzzle-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .puzzle-title {
+            color: #5580ff;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+            font-weight: 600;
+            border-bottom: 2px solid #5580ff;
+        }
+        
+        .puzzle-images-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .puzzle-image {
+            max-width: 100%;
+            border-radius: 6px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid #eee;
+            max-height: 300px;
+            object-fit: contain;
+        }
+        
+        .puzzle-text {
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+        
+        .answer-section {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+            border-left: 4px solid #5580ff;
+        }
+        
+        .answer-input-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .answer-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            min-width: 0;
+        }
+        
+        .answer-input:focus {
+            outline: none;
+            border-color: #5580ff;
+            box-shadow: 0 0 0 3px rgba(85, 128, 255, 0.1);
+        }
+        
+        .answer-btn {
+            background-color: #5580ff;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+            white-space: nowrap;
+        }
+        
+        .answer-btn:hover {
+            background-color: #3a6cff;
+        }
+        
+        .result-message {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            display: none;
+            text-align: center;
+        }
+        
+        .result-correct {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+        
+        .result-incorrect {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #7f8c8d;
+        }
+        
+        .empty-state h2 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eaeaea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            color: #5580ff;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #777;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #5580ff;
+            box-shadow: 0 0 0 3px rgba(85, 128, 255, 0.1);
+        }
+        
+        textarea.form-control {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eaeaea;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        
+        .btn-primary {
+            background-color: #5580ff;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: #f1f1f1;
+            color: #333;
+        }
+        
+        .btn-danger {
+            background-color: #ff4757;
+            color: white;
+        }
+        
+        .image-preview-container {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .image-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 6px;
+            object-fit: cover;
+            border: 2px solid #eee;
+        }
+        
+        .image-upload-area {
+            border: 2px dashed #5580ff;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            color: #777;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .image-upload-area:hover {
+            background-color: #f8f9ff;
+        }
+        
+        .image-upload-area i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: #5580ff;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background-color: #2ecc71;
+            color: white;
+            border-radius: 6px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1001;
+        }
+        
+        /* 移动设备响应式 */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 60vh;
+            }
+            
+            .sidebar.collapsed {
+                width: 100%;
+                height: 70px;
+            }
+            
+            .sidebar.collapsed .puzzle-nav,
+            .sidebar.collapsed .sidebar-controls {
+                display: none;
+            }
+            
+            .content-header {
+                padding: 15px;
+            }
+            
+            .content-body {
+                padding: 15px;
+            }
+            
+            .puzzle-content {
+                padding: 20px;
+            }
+            
+            .answer-input-row {
+                flex-direction: column;
+            }
+            
+            .puzzle-images-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 左侧侧边栏 -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>NSPH #02</h1>
+            <button class="toggle-btn" id="toggleBtn">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
+        
+        <div class="puzzle-nav" id="puzzleNav">
+            <!-- 谜题导航结构将通过JavaScript动态生成 -->
+        </div>
+        
+        <div class="sidebar-controls">
+            <button id="addBtn">
+                <i class="fas fa-plus"></i>
+                <span>添加</span>
+            </button>
+            <button id="editBtn">
+                <i class="fas fa-edit"></i>
+                <span>编辑</span>
+            </button>
+            <button id="saveBtn">
+                <i class="fas fa-save"></i>
+                <span>保存</span>
+            </button>
+        </div>
+        
+        <div class="sidebar-footer">
+            <p>By Phasma</p>
+        </div>
+    </div>
+    
+    <!-- 右侧主内容区域 -->
+    <div class="main-content">
+        <div class="content-header">
+            <div class="current-region-title" id="currentRegionTitle">选择一个区域开始</div>
+        </div>
+        
+        <div class="content-body">
+            <!-- 初始状态：未选择谜题 -->
+            <div class="empty-state" id="emptyState">
+                <h2>欢迎来到 NSPH #02</h2>
+                <p>请从左侧导航中选择一个谜题开始挑战</p>
+            </div>
+            
+            <!-- 谜题内容将通过JavaScript动态生成 -->
+        </div>
+    </div>
+    
+    <!-- 添加/编辑谜题模态框 -->
+    <div class="modal" id="puzzleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">添加新谜题</h2>
+                <button class="close-btn" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="puzzleForm">
+                    <div class="form-group">
+                        <label for="puzzleRegion">选择区域</label>
+                        <select class="form-control" id="puzzleRegion" required>
+                            <option value="">请选择区域</option>
+                            <option value="A">A区</option>
+                            <option value="B">B区</option>
+                            <option value="C">C区</option>
+                            <option value="D">D区</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="puzzleNumber">谜题编号</label>
+                        <input type="text" class="form-control" id="puzzleNumber" placeholder="编号" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="puzzleTitle">谜题标题</label>
+                        <input type="text" class="form-control" id="puzzleTitle" placeholder="标题" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="puzzleText">风味文本</label>
+                        <textarea class="form-control" id="puzzleText" placeholder="请输入谜题的风味文本描述..." required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="puzzleAnswer">正确答案</label>
+                        <input type="text" class="form-control" id="puzzleAnswer" placeholder="请输入谜题的正确答案..." required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>谜题图片 (支持多张图片，单张最大10MB)</label>
+                        <div class="image-upload-area" id="imageUploadArea">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>点击或拖拽图片到这里上传</p>
+                            <p>支持 JPG, PNG 格式，最大 10MB</p>
+                        </div>
+                        <input type="file" id="imageUpload" accept="image/*" class="hidden" multiple>
+                        <div class="image-preview-container" id="imagePreviewContainer">
+                            <!-- 图片预览将在这里显示 -->
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">取消</button>
+                        <button type="button" class="btn btn-danger" id="deleteBtn" style="display:none;">删除谜题</button>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">保存谜题</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 保存成功提示 -->
+    <div class="toast" id="saveToast">数据已成功保存到文件！</div>
+    
+    <script>
+        // 空的谜题数据结构
+        const emptyPuzzleData = {
+            "categories": []
+        };
+
+        // 全局变量
+        let currentPuzzleId = null;
+        let currentCategoryId = null;
+        let sidebarCollapsed = false;
+        let puzzleData = null;
+        let isEditMode = false;
+        let currentEditPuzzleId = null;
+        let uploadedImages = [];
+        
+        // 从文件加载数据
+        async function loadPuzzleDataFromFile() {
+            try {
+                const response = await fetch('nsph02_data.json');
+                if (!response.ok) {
+                    throw new Error('数据文件不存在或无法访问');
+                }
+                const data = await response.json();
+                console.log('从文件加载数据成功');
+                return data;
+            } catch (error) {
+                console.log('从文件加载数据失败，使用空数据:', error.message);
+                // 返回空数据结构
+                return JSON.parse(JSON.stringify(emptyPuzzleData));
+            }
+        }
+        
+        // 保存数据到文件
+        function savePuzzleDataToFile() {
+            try {
+                const dataStr = JSON.stringify(puzzleData, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'nsph02_data.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showToast('数据已成功保存到文件 nsph02_data.json！');
+                return true;
+            } catch (error) {
+                console.error('保存数据到文件失败:', error);
+                alert('保存数据到文件失败: ' + error.message);
+                return false;
+            }
+        }
+
+        // DOM加载完成后初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 加载数据
+            puzzleData = await loadPuzzleDataFromFile();
+            
+            initPage();
+            setupEventListeners();
+        });
+
+        // 初始化页面
+        function initPage() {
+            // 生成侧边栏导航
+            generateSidebarNav();
+            
+            // 生成谜题内容区域
+            generatePuzzleContents();
+            
+            // 如果有谜题，显示第一个谜题
+            if (puzzleData.categories.length > 0) {
+                // 找到第一个有谜题的分类
+                let firstCategory = null;
+                let firstPuzzle = null;
+                
+                for (const category of puzzleData.categories) {
+                    if (category.puzzles && category.puzzles.length > 0) {
+                        firstCategory = category;
+                        firstPuzzle = category.puzzles[0];
+                        break;
+                    }
+                }
+                
+                if (firstCategory && firstPuzzle) {
+                    currentCategoryId = firstCategory.id;
+                    currentPuzzleId = firstPuzzle.id;
+                    
+                    // 显示区域名称和第一个谜题
+                    updateRegionTitle(firstCategory.id);
+                    showPuzzle(firstPuzzle.id);
+                }
+            }
+        }
+
+        // 生成侧边栏导航
+        function generateSidebarNav() {
+            const navContainer = document.getElementById('puzzleNav');
+            navContainer.innerHTML = '';
+            
+            if (puzzleData.categories.length === 0) {
+                const emptyMessage = document.createElement('div');
+                emptyMessage.className = 'empty-message';
+                emptyMessage.style.padding = '20px';
+                emptyMessage.style.textAlign = 'center';
+                emptyMessage.style.color = 'rgba(255, 255, 255, 0.7)';
+                emptyMessage.innerHTML = '暂无谜题，点击"添加"创建第一个谜题';
+                navContainer.appendChild(emptyMessage);
+                return;
+            }
+            
+            puzzleData.categories.forEach(category => {
+                // 创建分类容器
+                const categoryElement = document.createElement('div');
+                categoryElement.className = 'puzzle-category';
+                categoryElement.dataset.categoryId = category.id;
+                
+                // 创建分类标题
+                const categoryTitle = document.createElement('div');
+                categoryTitle.className = 'category-title';
+                categoryTitle.innerHTML = `
+                    <div class="letter">${category.letter}</div>
+                    <div class="title-text">${category.title}</div>
+                `;
+                
+                // 创建谜题列表
+                const puzzleList = document.createElement('div');
+                puzzleList.className = 'puzzle-list';
+                puzzleList.classList.add('show'); // 默认展开
+                
+                // 添加谜题项
+                if (category.puzzles && category.puzzles.length > 0) {
+                    category.puzzles.forEach(puzzle => {
+                        const puzzleItem = document.createElement('div');
+                        puzzleItem.className = 'puzzle-item';
+                        puzzleItem.dataset.puzzleId = puzzle.id;
+                        puzzleItem.dataset.categoryId = category.id;
+                        
+                        // 提取谜题编号（A1, Ameta等）
+                        const puzzleNumber = puzzle.title.split(' - ')[0];
+                        
+                        puzzleItem.innerHTML = `
+                            <div class="puzzle-number">${puzzleNumber}</div>
+                            <div class="puzzle-title-text">- ${puzzle.shortTitle}</div>
+                        `;
+                        puzzleList.appendChild(puzzleItem);
+                    });
+                } else {
+                    const emptyMessage = document.createElement('div');
+                    emptyMessage.style.padding = '10px 20px 10px 45px';
+                    emptyMessage.style.color = 'rgba(255, 255, 255, 0.5)';
+                    emptyMessage.style.fontSize = '0.85rem';
+                    emptyMessage.textContent = '暂无谜题';
+                    puzzleList.appendChild(emptyMessage);
+                }
+                
+                // 组装分类元素
+                categoryElement.appendChild(categoryTitle);
+                categoryElement.appendChild(puzzleList);
+                navContainer.appendChild(categoryElement);
+                
+                // 默认展开第一个分类
+                if (category.id === (puzzleData.categories[0]?.id || '')) {
+                    categoryTitle.classList.add('active');
+                }
+            });
+        }
+
+        // 生成谜题内容区域
+        function generatePuzzleContents() {
+            const contentBody = document.querySelector('.content-body');
+            contentBody.innerHTML = '';
+            
+            // 添加空状态
+            const emptyState = document.createElement('div');
+            emptyState.className = 'empty-state';
+            emptyState.id = 'emptyState';
+            emptyState.innerHTML = `
+                <h2>欢迎来到 NSPH #02</h2>
+                <p>请从左侧导航中选择一个谜题开始挑战，或点击"添加"创建新谜题</p>
+            `;
+            contentBody.appendChild(emptyState);
+            
+            // 如果没有谜题，直接返回
+            if (puzzleData.categories.length === 0) return;
+            
+            puzzleData.categories.forEach(category => {
+                if (category.puzzles && category.puzzles.length > 0) {
+                    category.puzzles.forEach(puzzle => {
+                        // 创建谜题内容容器
+                        const puzzleContent = document.createElement('div');
+                        puzzleContent.className = 'puzzle-content';
+                        puzzleContent.id = `${puzzle.id}-content`;
+                        
+                        // 构建图片HTML
+                        let imagesHTML = '';
+                        if (puzzle.images && puzzle.images.length > 0) {
+                            imagesHTML = '<div class="puzzle-images-container">';
+                            puzzle.images.forEach(image => {
+                                imagesHTML += `<img src="${image}" alt="${puzzle.title}" class="puzzle-image">`;
+                            });
+                            imagesHTML += '</div>';
+                        }
+                        
+                        // 构建谜题内容HTML
+                        puzzleContent.innerHTML = `
+                            <h1 class="puzzle-title">${puzzle.title}</h1>
+                            ${imagesHTML}
+                            <div class="puzzle-text">
+                                ${puzzle.text.split('\n').map(para => `<p>${para}</p>`).join('')}
+                            </div>
+                            <div class="answer-section">
+                                <div class="answer-input-row">
+                                    <input type="text" class="answer-input" id="${puzzle.id}-answer" placeholder="请输入答案">
+                                    <button class="answer-btn" data-puzzle-id="${puzzle.id}">提交</button>
+                                </div>
+                                <div class="result-message" id="${puzzle.id}-result"></div>
+                            </div>
+                        `;
+                        
+                        contentBody.appendChild(puzzleContent);
+                    });
+                }
+            });
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 侧边栏切换按钮
+            document.getElementById('toggleBtn').addEventListener('click', toggleSidebar);
+            
+            // 侧边栏控制按钮
+            document.getElementById('addBtn').addEventListener('click', openAddModal);
+            document.getElementById('editBtn').addEventListener('click', openEditModal);
+            document.getElementById('saveBtn').addEventListener('click', savePuzzleDataToFile);
+            
+            // 模态框相关按钮
+            document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+            document.getElementById('cancelBtn').addEventListener('click', closeModal);
+            document.getElementById('deleteBtn').addEventListener('click', deletePuzzle);
+            document.getElementById('puzzleForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                savePuzzle();
+            });
+            
+            // 图片上传
+            document.getElementById('imageUploadArea').addEventListener('click', function() {
+                document.getElementById('imageUpload').click();
+            });
+            
+            document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
+            
+            // 拖拽上传图片
+            document.getElementById('imageUploadArea').addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.style.backgroundColor = '#f0f4ff';
+            });
+            
+            document.getElementById('imageUploadArea').addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.style.backgroundColor = '';
+            });
+            
+            document.getElementById('imageUploadArea').addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.style.backgroundColor = '';
+                
+                const files = e.dataTransfer.files;
+                handleImageFiles(files);
+            });
+            
+            // 分类标题点击事件 - 展开/收起分类
+            document.addEventListener('click', function(e) {
+                // 分类标题点击
+                if (e.target.closest('.category-title')) {
+                    const categoryTitle = e.target.closest('.category-title');
+                    const categoryElement = categoryTitle.parentElement;
+                    const puzzleList = categoryElement.querySelector('.puzzle-list');
+                    
+                    // 如果侧边栏已收起，先展开侧边栏
+                    if (sidebarCollapsed) {
+                        toggleSidebar();
+                        return;
+                    }
+                    
+                    // 切换显示/隐藏
+                    puzzleList.classList.toggle('show');
+                    categoryTitle.classList.toggle('active');
+                }
+                
+                // 谜题项点击
+                if (e.target.closest('.puzzle-item')) {
+                    const puzzleItem = e.target.closest('.puzzle-item');
+                    const puzzleId = puzzleItem.dataset.puzzleId;
+                    const categoryId = puzzleItem.dataset.categoryId;
+                    
+                    // 更新当前区域
+                    currentCategoryId = categoryId;
+                    updateRegionTitle(categoryId);
+                    
+                    // 显示选中的谜题
+                    showPuzzle(puzzleId);
+                    
+                    // 更新活跃状态
+                    document.querySelectorAll('.puzzle-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    puzzleItem.classList.add('active');
+                    
+                    // 确保父分类是展开的
+                    const categoryElement = puzzleItem.closest('.puzzle-category');
+                    const puzzleList = categoryElement.querySelector('.puzzle-list');
+                    const categoryTitle = categoryElement.querySelector('.category-title');
+                    
+                    if (!puzzleList.classList.contains('show')) {
+                        puzzleList.classList.add('show');
+                        categoryTitle.classList.add('active');
+                    }
+                    
+                    // 如果侧边栏已收起，在移动设备上点击后自动展开
+                    if (sidebarCollapsed && window.innerWidth <= 768) {
+                        toggleSidebar();
+                    }
+                }
+                
+                // 答案提交按钮点击
+                if (e.target.closest('.answer-btn')) {
+                    const submitBtn = e.target.closest('.answer-btn');
+                    const puzzleId = submitBtn.dataset.puzzleId;
+                    
+                    // 验证答案
+                    checkAnswer(puzzleId);
+                }
+                
+                // 答案输入框回车键提交
+                if (e.target.classList.contains('answer-input') && e.key === 'Enter') {
+                    const input = e.target;
+                    const puzzleId = input.id.replace('-answer', '');
+                    
+                    // 验证答案
+                    checkAnswer(puzzleId);
+                }
+            });
+            
+            // 监听答案输入框的回车键
+            document.addEventListener('keyup', function(e) {
+                if (e.target.classList.contains('answer-input') && e.key === 'Enter') {
+                    const input = e.target;
+                    const puzzleId = input.id.replace('-answer', '');
+                    
+                    // 验证答案
+                    checkAnswer(puzzleId);
+                }
+            });
+        }
+
+        // 切换侧边栏收起/展开
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebarCollapsed = !sidebarCollapsed;
+            
+            if (sidebarCollapsed) {
+                sidebar.classList.add('collapsed');
+            } else {
+                sidebar.classList.remove('collapsed');
+            }
+        }
+
+        // 更新区域标题
+        function updateRegionTitle(categoryId) {
+            const category = puzzleData.categories.find(cat => cat.id === categoryId);
+            if (category) {
+                document.getElementById('currentRegionTitle').textContent = `${category.letter}区`;
+            }
+        }
+
+        // 显示指定谜题
+        function showPuzzle(puzzleId) {
+            // 隐藏所有谜题内容
+            document.querySelectorAll('.puzzle-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // 隐藏空状态提示
+            document.getElementById('emptyState').style.display = 'none';
+            
+            // 显示选中的谜题内容
+            const selectedPuzzle = document.getElementById(`${puzzleId}-content`);
+            if (selectedPuzzle) {
+                selectedPuzzle.classList.add('active');
+                currentPuzzleId = puzzleId;
+                
+                // 滚动到顶部
+                document.querySelector('.content-body').scrollTop = 0;
+                
+                // 清空前一个谜题的结果消息
+                document.querySelectorAll('.result-message').forEach(msg => {
+                    msg.style.display = 'none';
+                });
+                
+                // 聚焦到答案输入框
+                const answerInput = document.getElementById(`${puzzleId}-answer`);
+                if (answerInput) {
+                    answerInput.value = '';
+                    answerInput.focus();
+                }
+            }
+        }
+
+        // 根据ID获取谜题数据
+        function getPuzzleById(puzzleId) {
+            for (const category of puzzleData.categories) {
+                if (category.puzzles) {
+                    for (const puzzle of category.puzzles) {
+                        if (puzzle.id === puzzleId) {
+                            return puzzle;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        // 根据区域字母获取分类
+        function getCategoryByLetter(letter) {
+            return puzzleData.categories.find(cat => cat.letter === letter);
+        }
+
+        // 验证答案
+        function checkAnswer(puzzleId) {
+            const puzzle = getPuzzleById(puzzleId);
+            if (!puzzle) return;
+            
+            const answerInput = document.getElementById(`${puzzleId}-answer`);
+            const resultDiv = document.getElementById(`${puzzleId}-result`);
+            
+            if (!answerInput || !resultDiv) return;
+            
+            const userAnswer = answerInput.value.trim().toLowerCase();
+            
+            if (!userAnswer) {
+                resultDiv.textContent = "请输入答案";
+                resultDiv.className = "result-message result-incorrect";
+                resultDiv.style.display = "block";
+                return;
+            }
+            
+            // 验证答案（不区分大小写）
+            const isCorrect = userAnswer === puzzle.correctAnswer.toLowerCase();
+            
+            // 显示结果
+            if (isCorrect) {
+                resultDiv.textContent = "回答正确";
+                resultDiv.className = "result-message result-correct";
+            } else {
+                resultDiv.textContent = "回答错误";
+                resultDiv.className = "result-message result-incorrect";
+            }
+            
+            resultDiv.style.display = "block";
+            
+            // 3秒后自动滚动到结果
+            setTimeout(() => {
+                resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
+        
+        // 打开添加谜题模态框
+        function openAddModal() {
+            isEditMode = false;
+            currentEditPuzzleId = null;
+            
+            // 重置表单
+            document.getElementById('puzzleForm').reset();
+            document.getElementById('modalTitle').textContent = '添加新谜题';
+            document.getElementById('deleteBtn').style.display = 'none';
+            document.getElementById('submitBtn').textContent = '添加谜题';
+            
+            // 清空图片预览
+            uploadedImages = [];
+            updateImagePreview();
+            
+            // 打开模态框
+            document.getElementById('puzzleModal').style.display = 'flex';
+        }
+        
+        // 打开编辑谜题模态框
+        function openEditModal() {
+            if (!currentPuzzleId) {
+                alert('请先选择一个谜题进行编辑');
+                return;
+            }
+            
+            const puzzle = getPuzzleById(currentPuzzleId);
+            if (!puzzle) return;
+            
+            isEditMode = true;
+            currentEditPuzzleId = currentPuzzleId;
+            
+            // 提取区域字母和谜题编号
+            const fullTitle = puzzle.title;
+            const dashIndex = fullTitle.indexOf(' - ');
+            const puzzleNumber = dashIndex !== -1 ? fullTitle.substring(0, dashIndex) : fullTitle;
+            const regionLetter = puzzleNumber.charAt(0).toUpperCase();
+            
+            // 填充表单
+            document.getElementById('puzzleRegion').value = regionLetter;
+            document.getElementById('puzzleNumber').value = puzzleNumber;
+            document.getElementById('puzzleTitle').value = puzzle.shortTitle;
+            document.getElementById('puzzleText').value = puzzle.text;
+            document.getElementById('puzzleAnswer').value = puzzle.correctAnswer;
+            
+            // 处理图片 - 支持多张图片
+            uploadedImages = puzzle.images ? [...puzzle.images] : [];
+            updateImagePreview();
+            
+            // 更新模态框标题
+            document.getElementById('modalTitle').textContent = '编辑谜题';
+            document.getElementById('deleteBtn').style.display = 'inline-block';
+            document.getElementById('submitBtn').textContent = '更新谜题';
+            
+            // 打开模态框
+            document.getElementById('puzzleModal').style.display = 'flex';
+        }
+        
+        // 关闭模态框
+        function closeModal() {
+            document.getElementById('puzzleModal').style.display = 'none';
+            uploadedImages = [];
+        }
+        
+        // 处理图片上传
+        function handleImageUpload(e) {
+            const files = e.target.files;
+            handleImageFiles(files);
+        }
+        
+        // 处理图片文件
+        function handleImageFiles(files) {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                // 检查文件类型
+                if (!file.type.match('image.*')) {
+                    alert('只能上传图片文件');
+                    continue;
+                }
+                
+                // 检查文件大小（10MB限制）
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('图片大小不能超过10MB');
+                    continue;
+                }
+                
+                // 读取文件为DataURL
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    uploadedImages.push(e.target.result);
+                    updateImagePreview();
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            // 清空文件输入框，以便可以重复上传相同文件
+            document.getElementById('imageUpload').value = '';
+        }
+        
+        // 更新图片预览
+        function updateImagePreview() {
+            const container = document.getElementById('imagePreviewContainer');
+            container.innerHTML = '';
+            
+            if (uploadedImages.length === 0) {
+                return;
+            }
+            
+            uploadedImages.forEach((imageData, index) => {
+                const img = document.createElement('img');
+                img.src = imageData;
+                img.className = 'image-preview';
+                img.title = '点击移除图片';
+                
+                img.addEventListener('click', function() {
+                    uploadedImages.splice(index, 1);
+                    updateImagePreview();
+                });
+                
+                container.appendChild(img);
+            });
+        }
+        
+        // 保存谜题（添加或编辑）
+        function savePuzzle() {
+            // 获取表单数据
+            const regionLetter = document.getElementById('puzzleRegion').value;
+            const puzzleNumber = document.getElementById('puzzleNumber').value.trim();
+            const puzzleTitle = document.getElementById('puzzleTitle').value.trim();
+            const puzzleText = document.getElementById('puzzleText').value.trim();
+            const puzzleAnswer = document.getElementById('puzzleAnswer').value.trim();
+            
+            // 验证数据
+            if (!regionLetter || !puzzleNumber || !puzzleTitle || !puzzleText || !puzzleAnswer) {
+                alert('请填写所有必填字段');
+                return;
+            }
+            
+            // 验证谜题编号格式 - 现在只要求非空，并且以区域字母开头
+            if (puzzleNumber.length === 0) {
+                alert('谜题编号不能为空');
+                return;
+            }
+            
+            // 获取区域分类
+            let category = getCategoryByLetter(regionLetter);
+            if (!category) {
+                // 如果区域不存在，创建新区域
+                const categoryId = `category-${regionLetter.toLowerCase()}`;
+                category = {
+                    id: categoryId,
+                    title: regionLetter,
+                    letter: regionLetter,
+                    puzzles: []
+                };
+                puzzleData.categories.push(category);
+            }
+            
+            // 生成谜题ID - 使用安全的ID格式
+            const puzzleId = `puzzle-${regionLetter.toLowerCase()}-${puzzleNumber.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+            
+            // 确保puzzles数组存在
+            if (!category.puzzles) {
+                category.puzzles = [];
+            }
+            
+            if (isEditMode) {
+                // 编辑现有谜题
+                const puzzle = getPuzzleById(currentEditPuzzleId);
+                if (puzzle) {
+                    // 如果谜题区域改变了，需要从原区域删除并添加到新区域
+                    const oldPuzzleNumber = puzzle.title.split(' - ')[0];
+                    const oldRegionLetter = oldPuzzleNumber.charAt(0).toUpperCase();
+                    
+                    if (oldRegionLetter !== regionLetter) {
+                        // 从原区域删除
+                        const oldCategory = getCategoryByLetter(oldRegionLetter);
+                        if (oldCategory && oldCategory.puzzles) {
+                            oldCategory.puzzles = oldCategory.puzzles.filter(p => p.id !== currentEditPuzzleId);
+                        }
+                        
+                        // 添加到新区域
+                        puzzle.id = puzzleId;
+                        puzzle.title = `${puzzleNumber} - ${puzzleTitle}`;
+                        puzzle.shortTitle = puzzleTitle;
+                        puzzle.text = puzzleText;
+                        puzzle.correctAnswer = puzzleAnswer.toLowerCase();
+                        puzzle.answerType = "text";
+                        puzzle.images = [...uploadedImages];
+                        
+                        category.puzzles.push(puzzle);
+                    } else {
+                        // 同一区域，直接更新
+                        puzzle.id = puzzleId;
+                        puzzle.title = `${puzzleNumber} - ${puzzleTitle}`;
+                        puzzle.shortTitle = puzzleTitle;
+                        puzzle.text = puzzleText;
+                        puzzle.correctAnswer = puzzleAnswer.toLowerCase();
+                        puzzle.answerType = "text";
+                        puzzle.images = [...uploadedImages];
+                    }
+                }
+            } else {
+                // 添加新谜题
+                const newPuzzle = {
+                    id: puzzleId,
+                    title: `${puzzleNumber} - ${puzzleTitle}`,
+                    shortTitle: puzzleTitle,
+                    images: [...uploadedImages],
+                    text: puzzleText,
+                    correctAnswer: puzzleAnswer.toLowerCase(),
+                    answerType: "text"
+                };
+                
+                category.puzzles.push(newPuzzle);
+            }
+            
+            // 按谜题标题排序
+            if (category.puzzles && category.puzzles.length > 1) {
+                category.puzzles.sort((a, b) => {
+                    return a.title.localeCompare(b.title);
+                });
+            }
+            
+            // 按区域字母排序分类
+            puzzleData.categories.sort((a, b) => a.letter.localeCompare(b.letter));
+            
+            // 重新生成页面
+            generateSidebarNav();
+            generatePuzzleContents();
+            
+            // 显示新添加/编辑的谜题
+            currentCategoryId = category.id;
+            currentPuzzleId = puzzleId;
+            updateRegionTitle(category.id);
+            showPuzzle(puzzleId);
+            
+            // 更新侧边栏活跃状态
+            document.querySelectorAll('.puzzle-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.puzzleId === puzzleId) {
+                    item.classList.add('active');
+                }
+            });
+            
+            // 关闭模态框
+            closeModal();
+            
+            // 显示成功消息
+            showToast(isEditMode ? '谜题已更新！' : '谜题已添加！');
+        }
+        
+        // 删除谜题
+        function deletePuzzle() {
+            if (!confirm('确定要删除这个谜题吗？此操作不可撤销。')) {
+                return;
+            }
+            
+            // 查找并删除谜题
+            for (const category of puzzleData.categories) {
+                if (category.puzzles) {
+                    const index = category.puzzles.findIndex(p => p.id === currentEditPuzzleId);
+                    if (index !== -1) {
+                        category.puzzles.splice(index, 1);
+                        
+                        // 如果区域为空，删除该区域
+                        if (category.puzzles.length === 0) {
+                            const catIndex = puzzleData.categories.findIndex(c => c.id === category.id);
+                            puzzleData.categories.splice(catIndex, 1);
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // 重新生成页面
+            generateSidebarNav();
+            generatePuzzleContents();
+            
+            // 显示空状态或第一个谜题
+            if (puzzleData.categories.length > 0) {
+                // 找到第一个有谜题的分类
+                let firstCategory = null;
+                let firstPuzzle = null;
+                
+                for (const category of puzzleData.categories) {
+                    if (category.puzzles && category.puzzles.length > 0) {
+                        firstCategory = category;
+                        firstPuzzle = category.puzzles[0];
+                        break;
+                    }
+                }
+                
+                if (firstCategory && firstPuzzle) {
+                    currentCategoryId = firstCategory.id;
+                    currentPuzzleId = firstPuzzle.id;
+                    updateRegionTitle(firstCategory.id);
+                    showPuzzle(firstPuzzle.id);
+                } else {
+                    document.getElementById('emptyState').style.display = 'block';
+                    document.getElementById('currentRegionTitle').textContent = '选择一个区域开始';
+                }
+            } else {
+                document.getElementById('emptyState').style.display = 'block';
+                document.getElementById('currentRegionTitle').textContent = '选择一个区域开始';
+            }
+            
+            // 关闭模态框
+            closeModal();
+            
+            // 显示成功消息
+            showToast('谜题已删除！');
+        }
+        
+        // 显示提示消息
+        function showToast(message) {
+            const toast = document.getElementById('saveToast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
